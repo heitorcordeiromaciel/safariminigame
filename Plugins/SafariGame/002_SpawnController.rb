@@ -69,7 +69,7 @@ class SpawnController
 
   # Optional cleanup
   def dispose
-    @pokemons.each { |p| p.dispose }
-    @pokemons.clear
+    @pokemons.each { |p| p.sprite.dispose if p.sprite }
+		@pokemons.clear
   end
 end

@@ -4,7 +4,12 @@
 class Scene_SafariArcade < Scene_Base
   def start
     super
+
+    # --- Initialize Game State ---
+    @game_over = false
+    @exit_prompt_visible = false
     @current_biome = SafariArcade::BIOMES.sample
+
     # --- Initialize Controllers ---
     @spawn_controller      = SpawnController.new
     @spawn_controller.current_biome = @current_biome
@@ -12,21 +17,19 @@ class Scene_SafariArcade < Scene_Base
     @crosshair_controller  = CrosshairController.new
     @ball_controller       = BallController.new(@spawn_controller.pokemons, @crosshair_controller)
     @timer_controller      = TimerController.new
-    @hud_controller        = HUDController.new(@crosshair_controller, @ball_controller, @timer_controller)
+    @hud_controller        = HUDController.new(@crosshair_controller, @ball_controller, @timer_controller, @spawn_controller)
 
-    # --- Game State ---
-    @game_over = false
-
-    case @current_biome
-    when :forest
-        @background_bitmap = Bitmap.new("Graphics/Plugins/SafariGame/forest_bg")
-    when :desert
-        @background_bitmap = Bitmap.new("Graphics/Plugins/SafariGame/desert_bg")
-    when :cave
-        @background_bitmap = Bitmap.new("Graphics/Plugins/SafariGame/cave_bg")
-    when :lake
-        @background_bitmap = Bitmap.new("Graphics/Plugins/SafariGame/lake_bg")
-    end
+    # --- Load Background ---
+    bg_path = case @current_biome
+              when :forest then "Graphics/Plugins/SafariGame/forest_bg"
+              when :desert then "Graphics/Plugins/SafariGame/desert_bg"
+              when :cave   then "Graphics/Plugins/SafariGame/cave_bg"
+              when :lake   then "Graphics/Plugins/SafariGame/lake_bg"
+              end
+    @background_bitmap = Bitmap.new(bg_path)
+    @background_sprite = Sprite.new
+    @background_sprite.bitmap = @background_bitmap
+    @background_sprite.z = 0
   end
 
   def update
@@ -41,28 +44,56 @@ class Scene_SafariArcade < Scene_Base
     @timer_controller.update
     @hud_controller.update
 
+    # --- Check Exit Input ---
+    handle_exit_input
+
     # --- Check Game Over ---
     if @ball_controller.balls_left <= 0 || @timer_controller.time_left <= 0
       end_game
     end
   end
 
+  def handle_exit_input
+    return if @exit_prompt_visible
+    return unless Input.trigger?(Input::X)
+
+    @exit_prompt_visible = true
+
+    # Blocking prompt (minigame pauses while message shows)
+    choice = pbMessage(_INTL("Do you want to leave the Safari minigame?"), [_INTL("Yes"), _INTL("No")])
+
+    if choice == 0 # Yes
+      end_game
+    else           # No
+      @exit_prompt_visible = false
+    end
+  end
+
   def end_game
+    return if @game_over
     @game_over = true
-    # Optional: show results, fade out, return to map
-    pbMessage("Safari Minigame Over! You caught #{@spawn_controller.caught_count} Pokémon!")
-    pbFadeOutIn {
-      SceneManager.return
-    }
+
+    # Show result
+    pbMessage(_INTL("Safari Minigame Over! You caught {1} Pokémon!", @spawn_controller.caught_count))
+
+    # Fade out and return to map
+    pbFadeOutIn { SceneManager.return }
+
+    # Dispose resources
+    terminate
   end
 
   def terminate
     super
-    # Dispose sprites and resources if needed
-    @hud_controller.dispose
-    @crosshair_controller.dispose
-    @ball_controller.dispose
-    @movement_controller.dispose
-    @spawn_controller.dispose
+
+    # Dispose all sprites and controllers
+    @hud_controller.dispose if @hud_controller
+    @crosshair_controller.dispose if @crosshair_controller
+    @ball_controller.dispose if @ball_controller
+    @movement_controller.dispose if @movement_controller
+    @spawn_controller.dispose if @spawn_controller
+
+    @background_sprite.dispose if @background_sprite
+    @background_bitmap.dispose if @background_bitmap
   end
 end

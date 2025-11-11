@@ -6,21 +6,26 @@ class MovementController
 
   def initialize(pokemons)
     @pokemons = pokemons
+
     # Assign a random initial direction to each Pokémon
-    @pokemons.each do |poke|
-      poke.direction = rand * 2 * Math::PI # Radians: 0..2π
-    end
+    @pokemons.each { |poke| poke.direction = rand * 2 * Math::PI }
   end
 
-  # Call this every frame
+  # Call every frame
   def update
     @pokemons.each do |poke|
+      # Ensure newly spawned Pokémon have a direction
+      poke.direction ||= rand * 2 * Math::PI
       move_pokemon(poke)
     end
   end
 
   # --- Movement Logic ---
   def move_pokemon(poke)
+    # Skip if Pokémon is hidden inside a Poké Ball
+    return if poke.sprite.nil? || !poke.sprite.visible
+
+    # Apply Nature-based speed multiplier
     speed_multiplier = SafariArcade::NATURE_SPEED_MULTIPLIERS[poke.nature] || 1.0
     move_x = poke.speed * Math.cos(poke.direction) * speed_multiplier
     move_y = poke.speed * Math.sin(poke.direction) * speed_multiplier
@@ -31,7 +36,7 @@ class MovementController
     bounce_if_edge(poke)
   end
 
-
+  # Bounce off field edges and slightly randomize direction
   def bounce_if_edge(poke)
     bounced = false
 
@@ -55,10 +60,8 @@ class MovementController
       bounced = true
     end
 
-    # Slight random variation in direction after bounce
-    if bounced
-      poke.direction += rand(-0.2..0.2)
-    end
+    # Slight random variation after bounce to avoid repetitive movement
+    poke.direction += rand(-0.2..0.2) if bounced
   end
 
   # Optional cleanup
