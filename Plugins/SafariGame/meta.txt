@@ -1,0 +1,4 @@
+Name         = Safari Zone Minigame
+Version      = 0.1
+Essentials   = 21.1
+Credits      = HeitorCMaciel
